@@ -1,6 +1,7 @@
 ﻿import Mapbox from "@rnmapbox/maps";
 import React, { useMemo, useState } from "react";
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Position = [number, number];
 
@@ -13,6 +14,8 @@ export default function HomeScreen() {
   const [points, setPoints] = useState<Position[]>([]);
   const [done, setDone] = useState(false);
 
+  const insets = useSafeAreaInsets();
+
   const onMapPress = (event: any) => {
     if (done) return;
     const coords = event?.geometry?.coordinates;
@@ -22,18 +25,24 @@ export default function HomeScreen() {
 
   const finish = () => {
     if (points.length < 3) return;
-    // GeoJSON polygons must be closed (first point repeated at the end)
+
+    // Keep only the original points in your application state.
+    console.log("Polygon vertices:", JSON.stringify(points, null, 2));
+
+    // GeoJSON requires a closed ring, so close a copy only.
     const ring = [...points, points[0]];
+
     const feature = {
-      type: "Feature",
+      type: "Feature" as const,
       properties: {},
-      geometry: { type: "Polygon", coordinates: [ring] },
+      geometry: {
+        type: "Polygon" as const,
+        coordinates: [ring],
+      },
     };
-    console.log(
-      `Polygon vertices (${points.length} points):`,
-      JSON.stringify(points, null, 2),
-    );
+
     console.log("Polygon GeoJSON:", JSON.stringify(feature, null, 2));
+
     setDone(true);
   };
 
@@ -56,7 +65,7 @@ export default function HomeScreen() {
                 properties: {},
                 geometry: {
                   type: "Polygon" as const,
-                  coordinates: [[...points, points[0]]],
+                  coordinates: [[...points]],
                 },
               },
             ]
@@ -105,7 +114,10 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.center}>
         <Text>
-          Set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN in .env and restart Expo.
+          Mapbox access token is missing from this app bundle. For local
+          development, set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN in the project-root
+          .env and fully reload the app from Metro. For an installed build, add
+          the variable to the EAS build environment and rebuild.
         </Text>
       </SafeAreaView>
     );
@@ -147,13 +159,23 @@ export default function HomeScreen() {
         </Mapbox.ShapeSource>
       </Mapbox.MapView>
 
-      <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+      <View
+        style={[
+          styles.overlay,
+          {
+            paddingTop: insets.top + 8,
+            paddingBottom: insets.bottom + 16,
+          },
+        ]}
+        pointerEvents="box-none"
+      >
         <View style={styles.bar}>
           <Text style={styles.info}>
             {done
               ? "Polygon saved to console"
               : `${points.length} point(s) · tap map to add`}
           </Text>
+
           <View style={styles.row}>
             <Btn
               label="Undo"
@@ -169,7 +191,7 @@ export default function HomeScreen() {
             />
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -203,14 +225,20 @@ function Btn({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    flex: 1,
+  },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
   },
-  overlay: { flex: 1, justifyContent: "flex-end", padding: 16 },
+  overlay: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+  },
   bar: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -222,8 +250,15 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
   },
-  info: { fontSize: 13, fontWeight: "600", color: "#334155" },
-  row: { flexDirection: "row", gap: 8 },
+  info: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  row: {
+    flexDirection: "row",
+    gap: 8,
+  },
   btn: {
     flex: 1,
     height: 42,
@@ -232,8 +267,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#EFF6FF",
   },
-  btnPrimary: { backgroundColor: "#1D4ED8" },
-  btnDisabled: { opacity: 0.4 },
-  btnText: { fontWeight: "700", color: "#1D4ED8" },
-  btnTextPrimary: { color: "#FFFFFF" },
+  btnPrimary: {
+    backgroundColor: "#1D4ED8",
+  },
+  btnDisabled: {
+    opacity: 0.4,
+  },
+  btnText: {
+    fontWeight: "700",
+    color: "#1D4ED8",
+  },
+  btnTextPrimary: {
+    color: "#FFFFFF",
+  },
 });
